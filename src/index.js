@@ -4,11 +4,9 @@ import './index.css';
 
 
 function Square(props) {
-	console.log("props", props.winLines.includes(props.value) ? "square-win" : "")
-	console.log(props.winLines, props.value, props.winLines.includes(props.value))
 	return (
 		<button 
-			className={"square" + (props.winLines.includes(props.value) ? "square-win" : "")} 
+			className={"square" + (props.winLines.includes(props.index) ? " square-win" : "")} 
 			onClick={() => {props.onClick()}}>
 			{props.value}
 		</button>
@@ -26,19 +24,31 @@ function calculateWineer(squares) {
 		[0, 4, 8],
 		[2, 4, 6],			
 	];
-	console.log("calculateWineer", squares,)
+	let wineer = null;
+	let winLines = null;
+	let result;
 
-	for(let i = 0; i < lines.length; i++){
+
+	for(let i = 0; i < lines.length; i++){//勝利判斷
 		const [a, b, c] = lines[i];
-		console.log("equal", a,b,c)
 		if(squares[a] && squares[b] === squares[c] && squares[a] === squares[c]) {
-			return {
-				wineer: squares[a],
-				winLines: lines[i]
-			}
+			wineer = squares[a]
+			winLines = lines[i]
+			result = 0
 		}
 	}
-	return null
+	const isTie = !squares.some((elem)=> elem == null)
+	if(result!==0){
+		if(isTie) 
+			result = 1
+		else 
+			result = 2
+	}
+	return {
+		result,//0 勝利 1 平手 2 遊戲進行中
+		wineer,
+		winLines
+	}
 }
   
 class Board extends React.Component {
@@ -51,6 +61,7 @@ class Board extends React.Component {
 				const value = i * 3 + j;
 				xRows.push(<Square
 					value={this.props.squares[value]}
+					index={value}
 					winLines={this.props.winLines}
 					onClick={() => this.props.onClick(value)}
 					key={'square'+value}
@@ -85,7 +96,6 @@ class Game extends React.Component {
 			stepNumber: 0,
 			xIsNext: true,
 			isHistoryForward: true,
-			winLines:[],
 		}
 	}
 
@@ -95,15 +105,11 @@ class Game extends React.Component {
 		const current = history[history.length - 1];
     const squares = current.squares.slice();
 		
-		const result = calculateWineer(squares)
-		console.log("resuk", result, this.state.winLines.length)
+		const {result, wineer, winLines} = calculateWineer(squares)
 		
-		if(result && this.state.winLines.length === 0){
-			console.log("thththth")
-			this.changeWinLines(result.winLines)
-		}				
+
 		
-		if(result || squares[i]){
+		if(result!==2 || squares[i]){
 			return;
 		}
     squares[i] = this.state.xIsNext ? 'X' : "O";
@@ -117,7 +123,6 @@ class Game extends React.Component {
 			stepNumber: history.length,
 			xIsNext: !this.state.xIsNext,
 		});
-		console.log("history", squares)
   }		
 
 	jumpTo(step) {
@@ -134,19 +139,10 @@ class Game extends React.Component {
 		})
 	}
 
-	changeWinLines(lines){
-		console.log("lines", lines)
-		
-		this.setState({
-			winLines: lines
-		})
-	}
-
 	render() {
 		const history = this.state.history;
 		const current = history[this.state.stepNumber]
-		const result = calculateWineer(current.squares)
-		console.log("result", result)
+		const {result, wineer, winLines} = calculateWineer(current.squares)
 
     const moves = history.map(({squares, clickIndex}, move) => {
 			const x = clickIndex % 3
@@ -165,8 +161,10 @@ class Game extends React.Component {
 
 		let status;
 
-		if(result){
-			status = "Winner:" + result.wineer;
+		if(result===0){
+			status = "Winner:" + wineer;
+		}else if(result===1){
+			status = "Tie";
 		}else{
 			status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
 		}
@@ -176,7 +174,7 @@ class Game extends React.Component {
 				<div className="game-board">
 					<Board 
 						squares={current.squares}
-						winLines={this.state.winLines}
+						winLines={wineer ? winLines : []}
 						onClick={(i) => this.handleClick(i)}
 					/>
 				</div>
